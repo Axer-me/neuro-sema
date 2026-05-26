@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "build:offline": "npm run build && node scripts/build-offline-html.mjs"
   },
   "dependencies": {
     "react": "^18.3.1",
