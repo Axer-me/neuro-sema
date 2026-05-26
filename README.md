@@ -1,34 +1,35 @@
 # Neuro-Sema
 
-`Neuro-Sema` is a demo frontend for a sales assistant that helps prepare for client calls.
-The app shows a short brief for each company: context, risks, opportunities, suggested questions, and objection-handling prompts.
+`Neuro-Sema` — демо-фронтенд помощника для подготовки клиентских звонков.
+Приложение показывает краткий бриф по компании: контекст, риски, возможности, рекомендованные вопросы и подсказки по работе с возражениями.
 
-The interface is styled in the Alfa-Bank visual language, but this repository currently contains only a local UI prototype without a backend or real AI integrations.
+Интерфейс выполнен в визуальном стиле Альфа-Банка, но репозиторий содержит только локальный UI-прототип без бэкенда и реальных AI-интеграций.
 
-## What the project does
+## Что умеет проект
 
-The app lets you:
+Приложение позволяет:
 
-- browse a list of demo companies;
-- search by industry, segment, or contact role;
-- open a quick summary for the selected company;
-- view a full sales brief on a separate page.
+- просматривать список демо-компаний;
+- выполнять поиск по ИНН, наименованию или группе;
+- использовать фильтры по системам;
+- смотреть краткий summary по выбранной компании;
+- открывать расширенные разделы компании: **Полный отчет**, **Предложения**, **Риски**.
 
-All data is local and stored in mocks inside the repository.
+Все данные локальные и лежат в моках внутри репозитория.
 
-## Current status
+## Текущий статус
 
-This is a frontend-only prototype.
+Это фронтенд-прототип.
 
-- No backend
-- No LLM or external AI service
-- No database
-- No authentication
-- No API integration
+- Нет бэкенда
+- Нет LLM или внешнего AI-сервиса
+- Нет базы данных
+- Нет аутентификации
+- Нет API-интеграций
 
-The "AI assistant" behavior in the interface is currently represented by prepared mock data.
+Поведение «AI-помощника» в интерфейсе сейчас реализовано через подготовленные мок-данные.
 
-## Tech stack
+## Технологии
 
 - React 18
 - TypeScript
@@ -37,106 +38,111 @@ The "AI assistant" behavior in the interface is currently represented by prepare
 - Zustand
 - Tailwind CSS
 
-## Project structure
+## Структура проекта
 
 ```text
 src/
-  App.tsx                  Main UI and routes
-  main.tsx                 Application entry point
-  index.css                Global styles
-  types.ts                 Shared TypeScript types
-  mocks/companies.ts       Demo data for companies and briefs
-  services/dataProvider.ts Data access layer over local mocks
-  store/useBriefStore.ts   Zustand store for search and selection
+  App.tsx                  Основной UI и маршруты
+  main.tsx                 Точка входа приложения
+  index.css                Глобальные стили
+  types.ts                 Общие TypeScript-типы
+  mocks/companies.ts       Демо-данные компаний и брифов
+  services/dataProvider.ts Слой доступа к локальным мокам
+  store/useBriefStore.ts   Zustand-store для выбора и избранного
 ```
 
-## Screens
+## Основные экраны
 
-### Overview page
+### Стартовая страница
 
-At `/` the user sees:
+На `/` пользователь видит:
 
-- a list of companies;
-- a search field;
-- a side panel with a quick summary for the selected company.
+- строку поиска и переключатель режима поиска;
+- фильтры по системам;
+- результаты поиска с пагинацией;
+- правую панель с кратким summary по выбранной компании.
 
-### Company page
+### Страница компании
 
-At `/company/:companyId` the user sees:
+На `/company/:companyId` пользователь видит разделы:
 
-- company summary;
-- call goals;
-- risks;
-- opportunities;
-- recommended questions for the call;
-- objection-handling tips.
+- **Полный отчет**
+- **Предложения**
+- **Риски**
 
-## Running locally
+Также сохраняется контекст возврата назад к результатам поиска.
 
-### Requirements
+## Локальный запуск
 
-- Node.js 18+ recommended
+### Требования
+
+- Node.js 18+ (рекомендуется)
 - npm
 
-### Install dependencies
+### Установка зависимостей
 
 ```bash
 npm install
 ```
 
-### Start the development server
+### Запуск dev-сервера
 
 ```bash
 npm run dev
 ```
 
-Vite usually starts the app at:
+Обычно Vite поднимает приложение на:
 
 ```text
 http://localhost:5173
 ```
 
-### Build for production
+### Production-сборка
 
 ```bash
 npm run build
 ```
 
-### Preview the production build
+### Локальный preview production-сборки
 
 ```bash
 npm run preview
 ```
 
-## Available scripts
+### Офлайн HTML-сборка (один файл)
 
-- `npm run dev` - start the local development server
-- `npm run build` - run TypeScript build and create the production bundle
-- `npm run preview` - serve the built app locally
+```bash
+npm run build:offline
+```
 
-## Data model
+Готовый файл:
 
-Demo companies are stored in `src/mocks/companies.ts`.
-The app includes three example companies:
+```text
+offline-html/neuro-sema.html
+```
 
-- `Alfa Retail`
-- `Delta Finance`
-- `Nova Logistics`
+## Доступные скрипты
 
-The `dataProvider` service simulates asynchronous loading with a short delay, so it can later be replaced with a real API layer with minimal UI changes.
+- `npm run dev` — запуск локального dev-сервера
+- `npm run build` — TypeScript-проверка и production-сборка
+- `npm run preview` — локальный запуск production-сборки
+- `npm run build:offline` — сборка офлайн-версии в `offline-html/`
 
-## Limitations
+## Модель данных
 
-- All content is hardcoded
-- The app is not connected to real customer systems
-- There are no tests or CI pipelines in this repository
-- The main UI is concentrated in `src/App.tsx`, so the project will need refactoring before scaling further
+Демо-компании находятся в `src/mocks/companies.ts`.
+`dataProvider` эмулирует асинхронную загрузку с задержкой, чтобы в будущем его можно было заменить на реальный API-слой с минимальными изменениями UI.
 
-## Next development steps
+## Ограничения
 
-If you want to turn this prototype into a real product, the next logical steps are:
+- Контент и метрики в разделах захардкожены
+- Приложение не подключено к реальным внутренним системам
+- В репозитории пока нет тестов и CI-пайплайнов
+- Основная часть логики находится в `src/App.tsx`; перед масштабированием проект стоит декомпозировать
 
-1. Move data from mocks to an API.
-2. Split `src/App.tsx` into pages and reusable components.
-3. Add linting, formatting, and tests.
-4. Connect real company context sources and AI-generated briefs.
+## Возможные следующие шаги
+
+1. Перенести данные из моков в API.
+2. Разделить `src/App.tsx` на страницы и переиспользуемые компоненты.
+3. Добавить линтинг, форматирование, тесты и CI.
+4. Подключить реальные источники контекста компании и AI-генерацию разделов.
