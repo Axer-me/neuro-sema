@@ -57,6 +57,7 @@ const SEARCH_LAYOUT_MS = 480
 const SEARCH_SCROLL_DURATION_MS = 720
 const SEARCH_RESULT_STAGGER_MS = 70
 const RESULTS_PER_PAGE = 4
+const MISSING_VALUE = '—'
 type ReportSection = 'full-report' | 'offers' | 'risks'
 
 const REPORT_SECTION_LABELS: Record<ReportSection, string> = {
@@ -1205,15 +1206,15 @@ function FilterIcon() {
 function ReportGrid({ company }: { company: CompanyBrief }) {
   const rows = [
     ['Наименование организации / ИНН', `${company.name} / ${company.inn}`],
-    ['Юридический адрес', `г. Москва, ул. ${company.groupName}, д. 12`],
-    ['Сайт', `https://${company.name.toLowerCase().replace(/\s+/g, '-')}.ru`],
+    ['Юридический адрес', MISSING_VALUE],
+    ['Сайт', company.website || MISSING_VALUE],
     ['Основные ОКВЭД / записка', `${company.okved} — ${company.summary}`],
-    ['Финансовая отчётность', 'РСБУ за 2023-2025 гг., динамика положительная'],
-    ['Выручка', `${(2200 + company.name.length * 18).toLocaleString('ru-RU')} млн руб.`],
-    ['ЧИ', `${(680 + company.id.length * 9).toLocaleString('ru-RU')} млн руб.`],
-    ['ЧП', `${(190 + company.groupName.length * 4).toLocaleString('ru-RU')} млн руб.`],
-    ['Среднесписочная численность', `${230 + company.id.length * 7} сотрудников`],
-    ['Контакты ЮЛ и ЛПР', `ЮЛ: info@${company.name.toLowerCase().replace(/\s+/g, '-')}.ru, ЛПР: ${company.contactRole}`],
+    ['Финансовая отчётность', MISSING_VALUE],
+    ['Выручка', MISSING_VALUE],
+    ['ЧИ', MISSING_VALUE],
+    ['ЧП', MISSING_VALUE],
+    ['Среднесписочная численность', MISSING_VALUE],
+    ['Контакты ЮЛ и ЛПР', company.contactRole === MISSING_VALUE ? MISSING_VALUE : company.contactRole],
     ['Сводка по достижениям компании', company.lastEvent],
   ] as const
 
@@ -1229,17 +1230,14 @@ function ReportGrid({ company }: { company: CompanyBrief }) {
   )
 }
 
-function ChecklistPanel({ title, items }: { title: string; items: Array<[string, string]> }) {
+function ChecklistPanel({ title, items }: { title: string; items: string[] }) {
   return (
     <div className="rounded-[1.5rem] border border-black/7 bg-[#fafafa] p-5">
       <h3 className="text-lg font-semibold text-[#171717]">{title}</h3>
       <div className="mt-4 space-y-3">
-        {items.map(([label, status]) => (
-          <div key={label} className="flex items-start justify-between gap-3 rounded-xl bg-white px-4 py-3">
-            <p className="text-sm text-[#2a2a2a]">{label}</p>
-            <span className="rounded-full border border-black/10 bg-[#f5f5f5] px-2.5 py-1 text-xs text-[#545454]">
-              {status}
-            </span>
+        {items.map((item, index) => (
+          <div key={`${item}-${index}`} className="rounded-xl bg-white px-4 py-3">
+            <p className="text-sm leading-6 text-[#2a2a2a]">{item}</p>
           </div>
         ))}
       </div>
@@ -1247,29 +1245,20 @@ function ChecklistPanel({ title, items }: { title: string; items: Array<[string,
   )
 }
 
-function getOffers(company: CompanyBrief): Array<[string, string]> {
-  const has = company.isAlfaBankClient ? 'Да' : 'Проверить'
-  return [
-    ['Наличие оферты СББ', has],
-    ['Наличие оферты УТК', 'Проверить'],
-    ['Факторинг', company.segment === 'Enterprise' ? 'Рекомендовано' : 'Точечно'],
-    ['Льготные программы финансирования', 'Доступно'],
-    ['ЭБГ, участник аукционов по 223 и 44 ФЗ', 'Проверить участие'],
-    ['База эмиссии ТЭ и ИЭ', 'Требуется анализ'],
-    ['База ФТС. Участник ВЭД', company.industry.includes('логистика') ? 'Да' : 'Проверить'],
-    ['Наличие лизинговых договоров', 'Есть потенциал'],
-  ]
+function normalizeFactList(items: string[]): string[] {
+  const cleaned = items
+    .map((item) => item.trim())
+    .filter((item) => item.length > 0 && item !== MISSING_VALUE)
+
+  return cleaned.length > 0 ? cleaned : [MISSING_VALUE]
 }
 
-function getRiskChecks(company: CompanyBrief): Array<[string, string]> {
-  return [
-    ['БКИ', company.isAlfaBankClient ? 'Стабильный профиль' : 'Требуется проверка'],
-    ['РНО', 'Проверить'],
-    ['115 ФЗ блокировки', 'Не выявлено в моках'],
-    ['Жалобы клиента на банк', company.isAlfaBankClient ? 'Единичные' : 'Нет данных'],
-    ['Санкционные и отраслевые ограничения', 'Мониторинг обязателен'],
-    ['Банкротство', 'Не выявлено'],
-  ]
+function getOffers(company: CompanyBrief): string[] {
+  return normalizeFactList([...company.opportunities, ...company.objectionHandling])
+}
+
+function getRiskChecks(company: CompanyBrief): string[] {
+  return normalizeFactList(company.risks)
 }
 
 function ShortSummaryPanel({ company }: { company: CompanyBrief }) {

@@ -28,6 +28,7 @@ export interface CompanyBrief {
   inn: string
   groupName: string
   name: string
+  website: string
   industry: string
   okved: string
   segment: string
