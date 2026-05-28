@@ -32,6 +32,9 @@ export interface CompanyBrief {
   industry: string
   okved: string
   segment: string
+  revenue: string
+  financialStatements: string
+  staffCount: string
   isAlfaBankClient: boolean
   kpGroup: string
   lastCommunicationDate: string
