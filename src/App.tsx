@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import type { FormEvent } from 'react'
+import type { FormEvent, ReactNode } from 'react'
 import { Link, Route, Routes, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 
 import { getCompanies, getCompanyById } from './services/dataProvider'
@@ -1288,26 +1288,69 @@ function displayFieldValue(value: string | undefined): string {
   return trimmed ? trimmed : MISSING_VALUE
 }
 
-function FullReportBlocks({ company }: { company: CompanyBrief }) {
-  const blocks = [
-    ['История взаимодействия', company.interactionHistory],
-    ['БО/Баланс', company.boBalance],
-    [
-      'Состав группы + связи с проспектами, закреплёнными за КП',
-      company.groupProspects,
-    ],
-  ] as const
+const GROUP_PROSPECTS_TITLE = 'Состав группы + связи с проспектами, закреплёнными за КП'
+const GROUP_PROSPECTS_COLLAPSE_THRESHOLD = 5
+
+function FullReportBlock({ title, children }: { title: string; children: ReactNode }) {
+  return (
+    <div className="rounded-[1.5rem] border border-black/7 bg-[#fafafa] p-5">
+      <h3 className="text-lg font-semibold text-[#171717]">{title}</h3>
+      <div className="mt-3">{children}</div>
+    </div>
+  )
+}
+
+function GroupProspectsBlock({ value, companyId }: { value: string; companyId: string }) {
+  const text = displayFieldValue(value)
+  const lines = text.split(/\r?\n/)
+  const isCollapsible = lines.length > GROUP_PROSPECTS_COLLAPSE_THRESHOLD
+  const [isExpanded, setIsExpanded] = useState(false)
+
+  useEffect(() => {
+    setIsExpanded(false)
+  }, [companyId])
+
+  const visibleText = isCollapsible && !isExpanded ? lines.slice(0, GROUP_PROSPECTS_COLLAPSE_THRESHOLD).join('\n') : text
+  const hiddenCount = lines.length - GROUP_PROSPECTS_COLLAPSE_THRESHOLD
 
   return (
+    <FullReportBlock title={GROUP_PROSPECTS_TITLE}>
+      <p className="whitespace-pre-wrap text-sm leading-6 text-[#171717]">{visibleText}</p>
+      {isCollapsible ? (
+        <button
+          type="button"
+          aria-expanded={isExpanded}
+          onClick={() => setIsExpanded((prev) => !prev)}
+          className="mt-3 inline-flex items-center gap-2 rounded-full border border-black/10 bg-white px-4 py-2 text-sm font-medium text-[#171717] transition hover:border-alfa-red/35 hover:bg-[#fff5f4] hover:text-alfa-red"
+        >
+          <span>
+            {isExpanded ? 'Свернуть' : `Показать ещё (${hiddenCount})`}
+          </span>
+          <span
+            className={`inline-flex transition-transform duration-300 ${isExpanded ? 'rotate-180' : ''}`}
+          >
+            <ChevronUpIcon />
+          </span>
+        </button>
+      ) : null}
+    </FullReportBlock>
+  )
+}
+
+function FullReportBlocks({ company }: { company: CompanyBrief }) {
+  return (
     <div className="space-y-4">
-      {blocks.map(([title, value]) => (
-        <div key={title} className="rounded-[1.5rem] border border-black/7 bg-[#fafafa] p-5">
-          <h3 className="text-lg font-semibold text-[#171717]">{title}</h3>
-          <p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-[#171717]">
-            {displayFieldValue(value)}
-          </p>
-        </div>
-      ))}
+      <FullReportBlock title="История взаимодействия">
+        <p className="whitespace-pre-wrap text-sm leading-6 text-[#171717]">
+          {displayFieldValue(company.interactionHistory)}
+        </p>
+      </FullReportBlock>
+      <FullReportBlock title="БО/Баланс">
+        <p className="whitespace-pre-wrap text-sm leading-6 text-[#171717]">
+          {displayFieldValue(company.boBalance)}
+        </p>
+      </FullReportBlock>
+      <GroupProspectsBlock value={company.groupProspects} companyId={company.id} />
     </div>
   )
 }
