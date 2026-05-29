@@ -57,7 +57,7 @@ const SEARCH_LAYOUT_MS = 480
 const SEARCH_SCROLL_DURATION_MS = 720
 const SEARCH_RESULT_STAGGER_MS = 70
 const RESULTS_PER_PAGE = 4
-const MISSING_VALUE = '—'
+const MISSING_VALUE = 'Нет информации'
 type ReportSection = 'full-report' | 'offers' | 'risks'
 
 const REPORT_SECTION_LABELS: Record<ReportSection, string> = {
@@ -779,7 +779,11 @@ function CompanyPage() {
 
         <div className="mt-6">
           {section === 'full-report' ? (
-            <ReportGrid company={company} />
+            <div className="space-y-6">
+              <ReportGrid company={company} />
+              <FullReportBlocks company={company} />
+              <PublicPresencePanel company={company} />
+            </div>
           ) : section === 'offers' ? (
             <ChecklistPanel title="Предложения для клиента" items={getOffers(company)} />
           ) : (
@@ -1203,19 +1207,131 @@ function FilterIcon() {
   )
 }
 
+function PublicPresencePanel({ company }: { company: CompanyBrief }) {
+  const { publicPresence } = company
+  const hasPublications = publicPresence.publications.length > 0
+  const hasAchievements = publicPresence.achievements.length > 0
+
+  return (
+    <div className="rounded-[1.5rem] border border-black/7 bg-[#fafafa] p-5">
+      <h3 className="text-lg font-semibold text-[#171717]">
+        Соцсети, сайты, проф. статьи и достижения ЮЛ и его ЛПР
+      </h3>
+      <p className="mt-1 text-xs text-[#757575]">
+        Данные из строки Excel (без основного сайта компании — он в поле «Сайт» выше).
+      </p>
+
+      <dl className="mt-4 grid gap-3">
+        <div className="rounded-xl border border-black/8 bg-white px-4 py-3">
+          <dt className="text-xs uppercase tracking-[0.16em] text-[#757575]">Соцсети</dt>
+          <dd className="mt-1.5 text-sm leading-6 text-[#171717]">{publicPresence.socialNetworks}</dd>
+        </div>
+        <div className="rounded-xl border border-black/8 bg-white px-4 py-3">
+          <dt className="text-xs uppercase tracking-[0.16em] text-[#757575]">
+            Прочие сайты и контакты в сети
+          </dt>
+          <dd className="mt-1.5 text-sm leading-6 text-[#171717]">{publicPresence.additionalSites}</dd>
+        </div>
+      </dl>
+
+      <div className="mt-5">
+        <h4 className="text-sm font-semibold text-[#171717]">Публикации и проф. материалы</h4>
+        {hasPublications ? (
+          <div className="mt-3 space-y-3">
+            {publicPresence.publications.map((item, index) => (
+              <article
+                key={`${item.source}-${index}`}
+                className="rounded-xl border border-black/8 bg-white px-4 py-3"
+              >
+                <p className="text-xs font-medium uppercase tracking-[0.14em] text-[#757575]">
+                  {item.source}
+                  {item.date !== MISSING_VALUE ? ` · ${item.date}` : ''}
+                </p>
+                <h5 className="mt-2 text-sm font-semibold text-[#171717]">{item.title}</h5>
+                <p className="mt-1.5 text-sm leading-6 text-[#525252]">{item.excerpt}</p>
+              </article>
+            ))}
+          </div>
+        ) : (
+          <p className="mt-2 text-sm text-[#757575]">{MISSING_VALUE}</p>
+        )}
+      </div>
+
+      <div className="mt-5">
+        <h4 className="text-sm font-semibold text-[#171717]">Достижения ЮЛ и ЛПР</h4>
+        {hasAchievements ? (
+          <ul className="mt-3 space-y-2">
+            {publicPresence.achievements.map((item, index) => (
+              <li
+                key={`${item}-${index}`}
+                className="rounded-xl bg-white px-4 py-3 text-sm leading-6 text-[#2a2a2a]"
+              >
+                {item}
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="mt-2 text-sm text-[#757575]">{MISSING_VALUE}</p>
+        )}
+      </div>
+    </div>
+  )
+}
+
+function offerCheckValue(company: CompanyBrief, label: string): string {
+  const item = company.offerChecks.find((check) => check.label === label)
+  return displayFieldValue(item?.value)
+}
+
+function displayFieldValue(value: string | undefined): string {
+  const trimmed = value?.trim() ?? ''
+  return trimmed ? trimmed : MISSING_VALUE
+}
+
+function FullReportBlocks({ company }: { company: CompanyBrief }) {
+  const blocks = [
+    ['История взаимодействия', company.interactionHistory],
+    ['БО/Баланс', company.boBalance],
+    [
+      'Состав группы + связи с проспектами, закреплёнными за КП',
+      company.groupProspects,
+    ],
+  ] as const
+
+  return (
+    <div className="space-y-4">
+      {blocks.map(([title, value]) => (
+        <div key={title} className="rounded-[1.5rem] border border-black/7 bg-[#fafafa] p-5">
+          <h3 className="text-lg font-semibold text-[#171717]">{title}</h3>
+          <p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-[#171717]">
+            {displayFieldValue(value)}
+          </p>
+        </div>
+      ))}
+    </div>
+  )
+}
+
 function ReportGrid({ company }: { company: CompanyBrief }) {
+  const okvedPart =
+    company.okved.trim() && company.okved !== MISSING_VALUE
+      ? `${company.okved} — ${company.summary}`
+      : company.summary
+
   const rows = [
     ['Наименование организации / ИНН', `${company.name} / ${company.inn}`],
     ['Юридический адрес', MISSING_VALUE],
-    ['Сайт', company.website || MISSING_VALUE],
-    ['Основные ОКВЭД / записка', `${company.okved} — ${company.summary}`],
-    ['Финансовая отчётность', company.financialStatements || MISSING_VALUE],
-    ['Выручка', company.revenue || MISSING_VALUE],
+    ['Сайт', displayFieldValue(company.website)],
+    ['Основные ОКВЭД / записка', okvedPart],
+    ['Финансовая отчётность', displayFieldValue(company.financialStatements)],
+    ['Выручка', displayFieldValue(company.revenue)],
+    ['База эмиссии ТЭ и ИЭ', offerCheckValue(company, 'База эмиссии ТЭ и ИЭ')],
+    ['База ФТС. Участник ВЭД', offerCheckValue(company, 'База ФТС. Участник ВЭД')],
     ['ЧИ', MISSING_VALUE],
     ['ЧП', MISSING_VALUE],
-    ['Среднесписочная численность', company.staffCount || MISSING_VALUE],
-    ['Контакты ЮЛ и ЛПР', company.contactRole === MISSING_VALUE ? MISSING_VALUE : company.contactRole],
-    ['Сводка по достижениям компании', company.lastEvent],
+    ['Среднесписочная численность', displayFieldValue(company.staffCount)],
+    ['Контакты ЮЛ и ЛПР', displayFieldValue(company.contactRole)],
+    ['Сводка по достижениям компании', displayFieldValue(company.lastEvent)],
   ] as const
 
   return (
@@ -1230,14 +1346,15 @@ function ReportGrid({ company }: { company: CompanyBrief }) {
   )
 }
 
-function ChecklistPanel({ title, items }: { title: string; items: string[] }) {
+function ChecklistPanel({ title, items }: { title: string; items: Array<[string, string]> }) {
   return (
     <div className="rounded-[1.5rem] border border-black/7 bg-[#fafafa] p-5">
       <h3 className="text-lg font-semibold text-[#171717]">{title}</h3>
-      <div className="mt-4 space-y-3">
-        {items.map((item, index) => (
-          <div key={`${item}-${index}`} className="rounded-xl bg-white px-4 py-3">
-            <p className="text-sm leading-6 text-[#2a2a2a]">{item}</p>
+      <div className="mt-4 grid gap-3">
+        {items.map(([label, value], index) => (
+          <div key={`${label}-${index}`} className="rounded-xl border border-black/8 bg-white px-4 py-3">
+            <p className="text-xs uppercase tracking-[0.16em] text-[#757575]">{label}</p>
+            <p className="mt-1.5 whitespace-pre-wrap text-sm leading-6 text-[#171717]">{value}</p>
           </div>
         ))}
       </div>
@@ -1245,20 +1362,20 @@ function ChecklistPanel({ title, items }: { title: string; items: string[] }) {
   )
 }
 
-function normalizeFactList(items: string[]): string[] {
-  const cleaned = items
-    .map((item) => item.trim())
-    .filter((item) => item.length > 0 && item !== MISSING_VALUE)
+function getOffers(company: CompanyBrief): Array<[string, string]> {
+  if (company.offerChecks.length === 0) {
+    return [['Предложения', MISSING_VALUE]]
+  }
 
-  return cleaned.length > 0 ? cleaned : [MISSING_VALUE]
+  return company.offerChecks.map((item) => [item.label, displayFieldValue(item.value)])
 }
 
-function getOffers(company: CompanyBrief): string[] {
-  return normalizeFactList([...company.opportunities, ...company.objectionHandling])
-}
+function getRiskChecks(company: CompanyBrief): Array<[string, string]> {
+  if (company.riskChecks.length === 0) {
+    return [['Риски', MISSING_VALUE]]
+  }
 
-function getRiskChecks(company: CompanyBrief): string[] {
-  return normalizeFactList(company.risks)
+  return company.riskChecks.map((item) => [item.label, displayFieldValue(item.value)])
 }
 
 function ShortSummaryPanel({ company }: { company: CompanyBrief }) {

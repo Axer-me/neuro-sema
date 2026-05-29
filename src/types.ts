@@ -23,12 +23,35 @@ export interface CallQuestion {
   note: string
 }
 
+/** Публикация из строки Excel «сайты, проф.статьи…» */
+export interface PublicationMention {
+  source: string
+  title: string
+  excerpt: string
+  date: string
+}
+
+/** Соцсети, сайты (кроме основного), статьи и достижения ЮЛ/ЛПР */
+export interface PublicPresence {
+  socialNetworks: string
+  additionalSites: string
+  publications: PublicationMention[]
+  achievements: string[]
+}
+
+/** Строка чек-листа с подписью из Excel */
+export interface LabeledField {
+  label: string
+  value: string
+}
+
 export interface CompanyBrief {
   id: string
   inn: string
   groupName: string
   name: string
   website: string
+  publicPresence: PublicPresence
   industry: string
   okved: string
   segment: string
@@ -42,9 +65,15 @@ export interface CompanyBrief {
   contactRole: string
   lastEvent: string
   summary: string
+  /** Excel, row 2 — История взаимодействия */
+  interactionHistory: string
+  /** Excel, row 12 — БО / Баланс */
+  boBalance: string
+  /** Excel, row 14 — Состав группы + связи с проспектами */
+  groupProspects: string
   goals: string[]
-  risks: string[]
-  opportunities: string[]
+  offerChecks: LabeledField[]
+  riskChecks: LabeledField[]
   questions: CallQuestion[]
   objectionHandling: string[]
 }
