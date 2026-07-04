@@ -2,16 +2,15 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import type { FormEvent, ReactNode } from 'react'
 import { Link, Route, Routes, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 
+import semaProfileImg from './assets/sema-profile.jpg'
+import semaTabletImg from './assets/sema-tablet.png'
 import { getCompanies, getCompanyById } from './services/dataProvider'
 import { useBriefStore } from './store/useBriefStore'
-import type { CompanyBrief, SearchMode, SystemFilter } from './types'
+import { DEFAULT_VISITING_CARD_URL, USER_NAME, useUserStore } from './store/useUserStore'
+import type { CompanyBrief, SystemFilter } from './types'
 import { SYSTEM_FILTERS } from './types'
 
-const SEARCH_MODE_OPTIONS: Array<{ value: SearchMode; label: string }> = [
-  { value: 'inn', label: 'ИНН' },
-  { value: 'name', label: 'Наименование' },
-  { value: 'group', label: 'Группа' },
-]
+const SEARCH_PLACEHOLDER = 'ИНН, наименование или группа'
 
 function App() {
   return (
@@ -23,6 +22,7 @@ function App() {
             <Route path="/" element={<StartPage />} />
             <Route path="/search" element={<SearchResultsPage />} />
             <Route path="/company/:companyId" element={<CompanyPage />} />
+            <Route path="/visiting-card" element={<VisitingCardPage />} />
           </Routes>
         </main>
       </div>
@@ -36,13 +36,11 @@ function parseSearchPage(value: string | null): number {
 }
 
 function buildSearchParams(
-  mode: SearchMode,
   query: string,
   systems: SystemFilter[],
   page = 1,
 ) {
   const params = new URLSearchParams()
-  params.set('mode', mode)
   params.set('q', query)
   if (systems.length > 0) {
     params.set('systems', systems.join(','))
@@ -87,13 +85,11 @@ function StartPage() {
   const scrollFrameRef = useRef<number>()
   const { resetSelectedCompanyId } = useBriefStore()
 
-  const urlMode = getSearchMode(searchParams.get('mode'))
   const submittedQuery = searchParams.get('q')?.trim() ?? ''
   const systemsParam = searchParams.get('systems') ?? ''
   const urlSystems = useMemo(() => parseSystemFilters(systemsParam), [systemsParam])
   const showResults = submittedQuery.length > 0
 
-  const [mode, setMode] = useState<SearchMode>(urlMode)
   const [query, setQuery] = useState(submittedQuery)
   const [selectedSystems, setSelectedSystems] = useState<SystemFilter[]>(urlSystems)
   const [isResultsCollapsed, setIsResultsCollapsed] = useState(false)
@@ -103,10 +99,9 @@ function StartPage() {
   }, [resetSelectedCompanyId])
 
   useEffect(() => {
-    setMode(urlMode)
     setQuery(searchParams.get('q') ?? '')
     setSelectedSystems(parseSystemFilters(systemsParam))
-  }, [searchParams, urlMode, systemsParam])
+  }, [searchParams, systemsParam])
 
   useEffect(() => {
     if (!showResults) {
@@ -115,7 +110,7 @@ function StartPage() {
     }
 
     setIsResultsCollapsed(false)
-  }, [showResults, submittedQuery, urlMode, systemsParam])
+  }, [showResults, submittedQuery, systemsParam])
 
   useEffect(() => {
     if (!showResults || isResultsCollapsed) {
@@ -184,7 +179,7 @@ function StartPage() {
         cancelAnimationFrame(scrollFrameRef.current)
       }
     }
-  }, [showResults, isResultsCollapsed, submittedQuery, urlMode, systemsParam])
+  }, [showResults, isResultsCollapsed, submittedQuery, systemsParam])
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
@@ -193,7 +188,7 @@ function StartPage() {
       return
     }
 
-    navigate(`/?${buildSearchParams(mode, trimmedQuery, selectedSystems).toString()}`)
+    navigate(`/?${buildSearchParams(trimmedQuery, selectedSystems).toString()}`)
   }
 
   return (
@@ -212,13 +207,26 @@ function StartPage() {
             <p className="text-xs font-semibold uppercase tracking-[0.28em] text-alfa-red/80">
               ИИ-помощник для клиентского менеджера
             </p>
-            <h1
-              className={`font-semibold tracking-tight text-[#171717] ${
-                showResults ? 'mt-3 text-4xl sm:text-5xl' : 'mt-5 text-5xl sm:text-6xl'
+            <div
+              className={`mt-5 flex items-center justify-center gap-3 sm:gap-4 ${
+                showResults ? 'mt-3' : ''
               }`}
             >
-              Нейро-Сёма
-            </h1>
+              <h1
+                className={`font-semibold tracking-tight text-[#171717] ${
+                  showResults ? 'text-4xl sm:text-5xl' : 'text-5xl sm:text-6xl'
+                }`}
+              >
+                Нейро-Сёма
+              </h1>
+              <img
+                src={semaTabletImg}
+                alt="Сёма"
+                className={`w-auto shrink-0 object-contain ${
+                  showResults ? 'h-14 sm:h-16' : 'h-16 sm:h-20 lg:h-24'
+                }`}
+              />
+            </div>
             <div
               className={`grid transition-[grid-template-rows,opacity] duration-[480ms] ease-search ${
                 showResults ? 'grid-rows-[0fr] opacity-0' : 'grid-rows-[1fr] opacity-100'
@@ -238,9 +246,7 @@ function StartPage() {
             }`}
             onSubmit={handleSubmit}
           >
-            <SearchModeTabs mode={mode} onChange={setMode} />
-
-            <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:items-center">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
               <SystemFiltersDropdown
                 selectedSystems={selectedSystems}
                 onChange={setSelectedSystems}
@@ -250,7 +256,7 @@ function StartPage() {
                 className="h-16 min-w-0 flex-1 rounded-[1.5rem] border border-black/10 bg-white px-5 text-base text-[#171717] outline-none transition placeholder:text-[#b0b0b0] focus:border-alfa-red focus:shadow-[0_0_0_4px_rgba(239,49,36,0.08)]"
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
-                placeholder={getSearchPlaceholder(mode)}
+                placeholder={SEARCH_PLACEHOLDER}
               />
               <button
                 type="submit"
@@ -289,12 +295,11 @@ function StartPage() {
               >
                 <div className="min-h-0">
                   <div
-                    key={`${submittedQuery}-${urlMode}-${systemsParam}`}
+                    key={`${submittedQuery}-${systemsParam}`}
                     ref={resultsRef}
                     className="max-w-5xl border-t border-black/6 pt-10 [animation-fill-mode:forwards] animate-search-reveal"
                   >
                     <SearchResultsPanel
-                      mode={urlMode}
                       query={submittedQuery}
                       selectedSystems={urlSystems}
                     />
@@ -322,11 +327,9 @@ function SearchResultsPage() {
 }
 
 function SearchResultsPanel({
-  mode,
   query,
   selectedSystems,
 }: {
-  mode: SearchMode
   query: string
   selectedSystems: SystemFilter[]
 }) {
@@ -358,7 +361,7 @@ function SearchResultsPanel({
   }, [])
 
   const filteredCompanies = useMemo(() => {
-    const byQuery = filterCompanies(companies, query, mode)
+    const byQuery = filterCompanies(companies, query)
 
     if (selectedSystems.length === 0) {
       return byQuery
@@ -367,7 +370,7 @@ function SearchResultsPanel({
     return byQuery.filter((company) =>
       selectedSystems.some((system) => company.systems.includes(system)),
     )
-  }, [companies, query, mode, selectedSystems])
+  }, [companies, query, selectedSystems])
 
   const totalPages = Math.max(1, Math.ceil(filteredCompanies.length / RESULTS_PER_PAGE))
 
@@ -479,7 +482,7 @@ function SearchResultsPanel({
   }, [selectedIndex, paginatedCompanies.length, currentPage, loading])
 
   const openCompanyBrief = (companyId: string, section: ReportSection) => {
-    const params = buildSearchParams(mode, query, selectedSystems, currentPage)
+    const params = buildSearchParams(query, selectedSystems, currentPage)
     params.set('section', section)
     navigate(
       `/company/${companyId}?${params.toString()}`,
@@ -504,7 +507,7 @@ function SearchResultsPanel({
           style={getRevealStyle(90)}
         >
           <div>
-            Тип поиска: <span className="font-medium text-[#171717]">{getSearchModeLabel(mode)}</span>
+            Запрос: <span className="font-medium text-[#171717]">{query}</span>
           </div>
           <div className="mt-1">
             Найдено компаний:{' '}
@@ -652,7 +655,6 @@ function CompanyPage() {
   const [searchParams] = useSearchParams()
   const [company, setCompany] = useState<CompanyBrief | null>(null)
   const [loading, setLoading] = useState(true)
-  const mode = getSearchMode(searchParams.get('mode'))
   const query = searchParams.get('q')?.trim() ?? ''
   const selectedSystems = parseSystemFilters(searchParams.get('systems'))
   const section = parseReportSection(searchParams.get('section'))
@@ -661,7 +663,7 @@ function CompanyPage() {
       ? ((location.state as { backPage?: number }).backPage ?? 1)
       : undefined
   const backPage = stateBackPage ?? parseSearchPage(searchParams.get('page'))
-  const backParams = buildSearchParams(mode, query, selectedSystems, backPage)
+  const backParams = buildSearchParams(query, selectedSystems, backPage)
   const sectionTabs = (Object.keys(REPORT_SECTION_LABELS) as ReportSection[]).map((value) => ({
     value,
     label: REPORT_SECTION_LABELS[value],
@@ -746,7 +748,7 @@ function CompanyPage() {
             </div>
             {query ? (
               <div className="mt-1">
-                Запрос: <span className="text-white/75">{getSearchModeLabel(mode)} / {query}</span>
+                Запрос: <span className="text-white/75">{query}</span>
               </div>
             ) : null}
           </div>
@@ -806,7 +808,250 @@ function TopNavigation() {
       >
         <BellIcon />
       </button>
+      <UserAccountMenu />
     </header>
+  )
+}
+
+function UserAccountMenu() {
+  const navigate = useNavigate()
+  const [isOpen, setIsOpen] = useState(false)
+
+  const menuItems = [
+    { label: 'Профиль', disabled: true },
+    { label: 'Настройки', disabled: true },
+    { label: 'Визитка', disabled: false },
+    { label: 'Выход', disabled: true },
+  ] as const
+
+  return (
+    <div
+      className="relative"
+      onMouseEnter={() => setIsOpen(true)}
+      onMouseLeave={() => setIsOpen(false)}
+    >
+      <button
+        type="button"
+        aria-label={`Личный кабинет — ${USER_NAME}`}
+        aria-expanded={isOpen}
+        className="overflow-hidden rounded-full ring-2 ring-transparent transition hover:ring-alfa-red/25"
+      >
+        <img
+          src={semaProfileImg}
+          alt={USER_NAME}
+          className="h-9 w-9 object-cover object-top"
+        />
+      </button>
+
+      {isOpen ? (
+        <div className="absolute right-0 top-full z-50 w-52 pt-2">
+          <div className="overflow-hidden rounded-[1.25rem] border border-black/8 bg-white shadow-[0_16px_40px_rgba(17,17,17,0.12)]">
+            <div className="border-b border-black/6 px-4 py-3">
+              <p className="text-sm font-semibold text-[#171717]">{USER_NAME}</p>
+              <p className="mt-0.5 text-xs text-[#737373]">Личный кабинет</p>
+            </div>
+            <ul className="py-1.5">
+              {menuItems.map((item) => (
+                <li key={item.label}>
+                  {item.disabled ? (
+                    <span className="block cursor-default px-4 py-2.5 text-sm text-[#b0b0b0]">
+                      {item.label}
+                    </span>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsOpen(false)
+                        navigate('/visiting-card')
+                      }}
+                      className="block w-full px-4 py-2.5 text-left text-sm font-medium text-[#171717] transition hover:bg-[#fff5f4] hover:text-alfa-red"
+                    >
+                      {item.label}
+                    </button>
+                  )}
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+      ) : null}
+    </div>
+  )
+}
+
+function normalizeVisitingCardUrl(value: string): string {
+  const trimmed = value.trim()
+  if (!trimmed) {
+    return ''
+  }
+  if (/^https?:\/\//i.test(trimmed)) {
+    return trimmed
+  }
+  return `https://${trimmed}`
+}
+
+function isValidVisitingCardUrl(value: string): boolean {
+  try {
+    const url = new URL(value)
+    return url.protocol === 'http:' || url.protocol === 'https:'
+  } catch {
+    return false
+  }
+}
+
+function buildQrCodeUrl(url: string): string {
+  return `https://quickchart.io/qr?text=${encodeURIComponent(url)}&size=220&margin=1`
+}
+
+function VisitingCardPreview({ url }: { url: string }) {
+  return (
+    <div className="flex flex-col items-center gap-6 px-6 py-10 sm:flex-row sm:items-start sm:justify-center sm:gap-10">
+      <div className="w-full max-w-sm overflow-hidden rounded-[1.5rem] border border-black/8 bg-white shadow-[0_12px_32px_rgba(17,17,17,0.08)]">
+        <div className="bg-gradient-to-br from-[#fff5f4] to-white px-6 py-8 text-center">
+          <img
+            src={semaProfileImg}
+            alt={USER_NAME}
+            className="mx-auto h-20 w-20 rounded-full object-cover object-top ring-2 ring-white shadow-md"
+          />
+          <p className="mt-4 text-xl font-semibold text-[#171717]">{USER_NAME}</p>
+          <p className="mt-1 text-sm text-[#737373]">Виртуальная визитная карточка</p>
+        </div>
+        <div className="border-t border-black/6 px-6 py-5">
+          <p className="break-all text-center text-sm leading-6 text-[#666666]">{url}</p>
+          <a
+            href={url}
+            target="_blank"
+            rel="noreferrer"
+            className="mt-4 flex h-12 items-center justify-center rounded-[1rem] bg-alfa-red text-sm font-medium text-white transition hover:brightness-105"
+          >
+            Открыть визитку
+          </a>
+        </div>
+      </div>
+
+      <div className="flex flex-col items-center text-center">
+        <img
+          src={buildQrCodeUrl(url)}
+          alt={`QR-код визитки ${USER_NAME}`}
+          width={220}
+          height={220}
+          className="rounded-[1rem] border border-black/8 bg-white p-2"
+        />
+        <p className="mt-3 max-w-[220px] text-xs leading-5 text-[#737373]">
+          Отсканируйте QR-код или откройте ссылку — так работает yourcf.online
+        </p>
+      </div>
+    </div>
+  )
+}
+
+function VisitingCardPage() {
+  const navigate = useNavigate()
+  const { visitingCardUrl, setVisitingCardUrl } = useUserStore()
+  const [inputValue, setInputValue] = useState(visitingCardUrl)
+  const [previewUrl, setPreviewUrl] = useState(() =>
+    isValidVisitingCardUrl(normalizeVisitingCardUrl(visitingCardUrl))
+      ? normalizeVisitingCardUrl(visitingCardUrl)
+      : '',
+  )
+
+  useEffect(() => {
+    setInputValue(visitingCardUrl)
+    const normalized = normalizeVisitingCardUrl(visitingCardUrl)
+    setPreviewUrl(isValidVisitingCardUrl(normalized) ? normalized : '')
+  }, [visitingCardUrl])
+
+  const handleApply = () => {
+    const normalized = normalizeVisitingCardUrl(inputValue)
+    if (!normalized || !isValidVisitingCardUrl(normalized)) {
+      return
+    }
+    setVisitingCardUrl(normalized)
+    setPreviewUrl(normalized)
+  }
+
+  const normalizedInput = normalizeVisitingCardUrl(inputValue)
+  const canApply = isValidVisitingCardUrl(normalizedInput) && normalizedInput !== visitingCardUrl
+
+  return (
+    <div className="mx-auto max-w-3xl">
+      <button
+        type="button"
+        onClick={() => navigate(-1)}
+        className="mb-6 inline-flex items-center gap-2 text-sm font-medium text-[#666666] transition hover:text-alfa-red"
+      >
+        <BackIcon />
+        Назад
+      </button>
+
+      <section className="rounded-[2rem] border border-black/5 bg-white p-6 shadow-[0_24px_60px_rgba(17,17,17,0.08)] sm:p-8">
+        <div className="flex items-start gap-4">
+          <img
+            src={semaProfileImg}
+            alt={USER_NAME}
+            className="h-16 w-16 shrink-0 rounded-full object-cover object-top ring-2 ring-black/5"
+          />
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-alfa-red/80">
+              Личный кабинет
+            </p>
+            <h1 className="mt-2 text-3xl font-semibold tracking-tight text-[#171717]">Визитка</h1>
+            <p className="mt-2 text-sm leading-7 text-[#666666]">
+              {USER_NAME} — ссылка на электронную визитку. Сервисы вроде yourcf.online не
+              встраиваются в iframe, поэтому показываем карточку и QR-код.
+            </p>
+          </div>
+        </div>
+
+        <div className="mt-8">
+          <label
+            htmlFor="visiting-card-url"
+            className="text-xs font-semibold uppercase tracking-[0.22em] text-[#737373]"
+          >
+            Ссылка на электронную визитку
+          </label>
+          <div className="mt-3 flex flex-col gap-3 sm:flex-row">
+            <input
+              id="visiting-card-url"
+              type="url"
+              value={inputValue}
+              onChange={(event) => setInputValue(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter') {
+                  event.preventDefault()
+                  handleApply()
+                }
+              }}
+              placeholder={DEFAULT_VISITING_CARD_URL}
+              className="h-14 min-w-0 flex-1 rounded-[1.25rem] border border-black/10 bg-white px-4 text-base text-[#171717] outline-none transition placeholder:text-[#b0b0b0] focus:border-alfa-red focus:shadow-[0_0_0_4px_rgba(239,49,36,0.08)]"
+            />
+            <button
+              type="button"
+              onClick={handleApply}
+              disabled={!canApply}
+              className="h-14 shrink-0 rounded-[1.25rem] bg-alfa-red px-7 text-base font-medium text-white transition hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              Показать
+            </button>
+          </div>
+        </div>
+
+        <div className="mt-8">
+          <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[#737373]">
+            Превью визитки
+          </p>
+          <div className="mt-3 overflow-hidden rounded-[1.5rem] border border-black/8 bg-[#fafafa]">
+            {previewUrl ? (
+              <VisitingCardPreview url={previewUrl} />
+            ) : (
+              <div className="flex min-h-[280px] items-center justify-center px-6 py-10 text-center text-sm leading-7 text-[#999999]">
+                Вставьте ссылку и нажмите «Показать», чтобы загрузить превью визитки.
+              </div>
+            )}
+          </div>
+        </div>
+      </section>
+    </div>
   )
 }
 
@@ -859,10 +1104,21 @@ function ChatAssistant() {
 
           <div className="space-y-3 px-4 py-4">
             <div className="max-w-[92%] rounded-[1.1rem] rounded-bl-md bg-[#f5f5f5] px-3.5 py-2.5 text-left text-sm leading-6 text-[#404040]">
-              Спросите о клиенте перед звонком — подскажу контекст, риски и вопросы для разговора.
+              Добро пожаловать в Нейро-Сёму! Расскажу, как пользоваться сайтом перед звонком клиенту.
             </div>
             <div className="ml-auto max-w-[88%] rounded-[1.1rem] rounded-br-md bg-alfa-red px-3.5 py-2.5 text-right text-sm leading-6 text-white">
-              Найди компанию по ИНН или названию — я подготовлю brief.
+              С чего начать?
+            </div>
+            <div className="max-w-[92%] rounded-[1.1rem] rounded-bl-md bg-[#f5f5f5] px-3.5 py-2.5 text-left text-sm leading-6 text-[#404040]">
+              На главной введи ИНН, название или группу — поиск сразу по всем полям. Можно
+              отфильтровать по системам (SFA, Pega, ClaimCRM и др.).
+            </div>
+            <div className="ml-auto max-w-[88%] rounded-[1.1rem] rounded-br-md bg-alfa-red px-3.5 py-2.5 text-right text-sm leading-6 text-white">
+              Что будет в карточке компании?
+            </div>
+            <div className="max-w-[92%] rounded-[1.1rem] rounded-bl-md bg-[#f5f5f5] px-3.5 py-2.5 text-left text-sm leading-6 text-[#404040]">
+              Три раздела: Полный отчёт, Предложения и Риски — всё для подготовки к разговору с
+              клиентом.
             </div>
           </div>
 
@@ -929,6 +1185,56 @@ function SendIcon() {
       aria-hidden="true"
     >
       <path strokeLinecap="round" strokeLinejoin="round" d="m5 12 14-7-7 14-7-7 7 14Z" />
+    </svg>
+  )
+}
+
+function MailIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      className="h-4 w-4"
+      aria-hidden="true"
+    >
+      <path strokeLinecap="round" strokeLinejoin="round" d="M4 7h16v10H4V7Z" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="m4 7 8 6 8-6" />
+    </svg>
+  )
+}
+
+function PhoneIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      className="h-4 w-4"
+      aria-hidden="true"
+    >
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M8.5 4.5h2l1.5 4-2 1.5a11 11 0 0 0 4.5 4.5l1.5-2 4 1.5v2a2 2 0 0 1-2 2A13.5 13.5 0 0 1 6.5 8.5a2 2 0 0 1 2-4Z"
+      />
+    </svg>
+  )
+}
+
+function CheckIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2.5"
+      className="h-3 w-3"
+      aria-hidden="true"
+    >
+      <path strokeLinecap="round" strokeLinejoin="round" d="M5 12l4 4 10-10" />
     </svg>
   )
 }
@@ -1067,33 +1373,6 @@ function BrandBadge() {
     <div className="inline-flex items-center gap-3 rounded-full border border-white/10 bg-white/5 px-4 py-2">
       <span className="h-2.5 w-2.5 rounded-full bg-alfa-red" />
       <span className="text-xs uppercase tracking-[0.22em] text-white/65">Alfa style</span>
-    </div>
-  )
-}
-
-function SearchModeTabs({
-  mode,
-  onChange,
-}: {
-  mode: SearchMode
-  onChange: (mode: SearchMode) => void
-}) {
-  return (
-    <div className="flex flex-wrap gap-3">
-      {SEARCH_MODE_OPTIONS.map((option) => (
-        <button
-          key={option.value}
-          type="button"
-          onClick={() => onChange(option.value)}
-          className={`rounded-xl border px-5 py-3 text-sm font-medium transition ${
-            mode === option.value
-              ? 'border-alfa-red bg-alfa-red text-white shadow-[0_12px_28px_rgba(239,49,36,0.22)]'
-              : 'border-black/8 bg-white text-[#171717] hover:border-black/15'
-          }`}
-        >
-          {option.label}
-        </button>
-      ))}
     </div>
   )
 }
@@ -1355,6 +1634,210 @@ function FullReportBlocks({ company }: { company: CompanyBrief }) {
   )
 }
 
+function parseContactItems(contactRole: string): string[] {
+  const trimmed = contactRole.trim()
+  if (!trimmed || trimmed === MISSING_VALUE) {
+    return []
+  }
+
+  return trimmed
+    .split(/[;/]/)
+    .map((item) => item.trim())
+    .filter(Boolean)
+}
+
+function isEmailContact(value: string): boolean {
+  return value.includes('@')
+}
+
+function VisitCardSendControl({ contacts }: { contacts: string[] }) {
+  const [isOpen, setIsOpen] = useState(false)
+  const [selectedContacts, setSelectedContacts] = useState<string[]>(contacts)
+
+  useEffect(() => {
+    setSelectedContacts(contacts)
+  }, [contacts])
+
+  if (contacts.length === 0) {
+    return null
+  }
+
+  const allSelected = selectedContacts.length === contacts.length
+
+  const toggleContact = (contact: string) => {
+    setSelectedContacts((current) =>
+      current.includes(contact)
+        ? current.filter((item) => item !== contact)
+        : [...current, contact],
+    )
+  }
+
+  const toggleAll = () => {
+    setSelectedContacts(allSelected ? [] : contacts)
+  }
+
+  return (
+    <div className="relative shrink-0">
+      <button
+        type="button"
+        aria-expanded={isOpen}
+        onClick={() => setIsOpen((open) => !open)}
+        className={`inline-flex items-center gap-2 rounded-full border px-3.5 py-2 text-xs font-semibold uppercase tracking-[0.14em] transition ${
+          isOpen
+            ? 'border-alfa-red bg-alfa-red text-white shadow-[0_10px_24px_rgba(239,49,36,0.24)]'
+            : 'border-black/10 bg-white text-[#171717] shadow-[0_4px_14px_rgba(17,17,17,0.06)] hover:border-alfa-red/30 hover:text-alfa-red'
+        }`}
+      >
+        <SendIcon />
+        <span>Отправить визитку</span>
+      </button>
+
+      {isOpen ? (
+        <>
+          <button
+            type="button"
+            aria-label="Закрыть"
+            className="fixed inset-0 z-40 cursor-default bg-black/10 backdrop-blur-[1px]"
+            onClick={() => setIsOpen(false)}
+          />
+          <div className="absolute right-0 top-[calc(100%+0.65rem)] z-50 w-[min(100vw-2rem,340px)] overflow-hidden rounded-[1.5rem] border border-black/8 bg-white shadow-[0_24px_60px_rgba(17,17,17,0.16)]">
+            <div className="bg-gradient-to-br from-[#fff5f4] via-white to-white px-5 py-4">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-sm font-semibold text-[#171717]">Рассылка визитки</p>
+                  <p className="mt-1 text-xs leading-5 text-[#737373]">
+                    Выберите контакты для отправки
+                  </p>
+                </div>
+                <span className="rounded-full bg-white px-2.5 py-1 text-xs font-medium text-alfa-red ring-1 ring-alfa-red/15">
+                  {selectedContacts.length}/{contacts.length}
+                </span>
+              </div>
+            </div>
+
+            <div className="border-t border-black/6 px-3 py-3">
+              <button
+                type="button"
+                onClick={toggleAll}
+                className={`mb-2 flex w-full items-center justify-between rounded-[1rem] border px-3.5 py-2.5 text-left text-sm transition ${
+                  allSelected
+                    ? 'border-alfa-red/25 bg-[#fff5f4] text-[#171717]'
+                    : 'border-black/8 bg-[#fafafa] text-[#525252] hover:border-black/12'
+                }`}
+              >
+                <span className="font-medium">Все контакты</span>
+                <span
+                  className={`flex h-5 w-5 items-center justify-center rounded-full border-2 transition ${
+                    allSelected ? 'border-alfa-red bg-alfa-red text-white' : 'border-black/15 bg-white'
+                  }`}
+                >
+                  {allSelected ? <CheckIcon /> : null}
+                </span>
+              </button>
+
+              <div className="max-h-56 space-y-2 overflow-y-auto pr-0.5">
+                {contacts.map((contact) => {
+                  const checked = selectedContacts.includes(contact)
+                  const isEmail = isEmailContact(contact)
+
+                  return (
+                    <button
+                      key={contact}
+                      type="button"
+                      onClick={() => toggleContact(contact)}
+                      className={`flex w-full items-center gap-3 rounded-[1rem] border px-3.5 py-3 text-left transition ${
+                        checked
+                          ? 'border-alfa-red/25 bg-[#fff5f4] shadow-[0_0_0_1px_rgba(239,49,36,0.12)]'
+                          : 'border-black/8 bg-white hover:border-black/12 hover:bg-[#fafafa]'
+                      }`}
+                    >
+                      <span
+                        className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${
+                          checked ? 'bg-alfa-red text-white' : 'bg-[#f5f5f5] text-[#737373]'
+                        }`}
+                      >
+                        {isEmail ? <MailIcon /> : <PhoneIcon />}
+                      </span>
+                      <span className="min-w-0 flex-1">
+                        <span className="block text-[10px] font-semibold uppercase tracking-[0.16em] text-[#999999]">
+                          {isEmail ? 'Email' : 'Телефон'}
+                        </span>
+                        <span className="mt-0.5 block truncate text-sm leading-6 text-[#171717]">
+                          {contact}
+                        </span>
+                      </span>
+                      <span
+                        className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 transition ${
+                          checked ? 'border-alfa-red bg-alfa-red text-white' : 'border-black/15 bg-white'
+                        }`}
+                      >
+                        {checked ? <CheckIcon /> : null}
+                      </span>
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+
+            <div className="border-t border-black/6 bg-[#fafafa] px-4 py-3">
+              <button
+                type="button"
+                disabled={selectedContacts.length === 0}
+                onClick={() => setIsOpen(false)}
+                className="flex h-11 w-full items-center justify-center gap-2 rounded-[1rem] bg-alfa-red text-sm font-medium text-white transition hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-45"
+              >
+                <SendIcon />
+                Отправить
+              </button>
+            </div>
+          </div>
+        </>
+      ) : null}
+    </div>
+  )
+}
+
+function ContactsReportField({ contactRole }: { contactRole: string }) {
+  const contacts = useMemo(() => parseContactItems(contactRole), [contactRole])
+  const displayValue = displayFieldValue(contactRole)
+
+  return (
+    <div className="rounded-xl border border-black/8 bg-[#fafafa] px-4 py-3">
+      <div className="flex items-start justify-between gap-4">
+        <p className="text-xs uppercase tracking-[0.16em] text-[#757575]">Контакты ЮЛ и ЛПР</p>
+        <VisitCardSendControl contacts={contacts} />
+      </div>
+
+      {contacts.length > 0 ? (
+        <ul className="mt-3 space-y-2">
+          {contacts.map((contact) => {
+            const isEmail = isEmailContact(contact)
+
+            return (
+              <li
+                key={contact}
+                className="flex items-center gap-3 rounded-[1rem] border border-black/6 bg-white px-3.5 py-2.5"
+              >
+                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#fff5f4] text-alfa-red">
+                  {isEmail ? <MailIcon /> : <PhoneIcon />}
+                </span>
+                <div className="min-w-0">
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[#999999]">
+                    {isEmail ? 'Email' : 'Телефон'}
+                  </p>
+                  <p className="truncate text-sm leading-6 text-[#171717]">{contact}</p>
+                </div>
+              </li>
+            )
+          })}
+        </ul>
+      ) : (
+        <p className="mt-1.5 text-sm leading-6 text-[#171717]">{displayValue}</p>
+      )}
+    </div>
+  )
+}
+
 function ReportGrid({ company }: { company: CompanyBrief }) {
   const okvedPart =
     company.okved.trim() && company.okved !== MISSING_VALUE
@@ -1379,12 +1862,16 @@ function ReportGrid({ company }: { company: CompanyBrief }) {
 
   return (
     <div className="grid gap-3">
-      {rows.map(([label, value]) => (
-        <div key={label} className="rounded-xl border border-black/8 bg-[#fafafa] px-4 py-3">
-          <p className="text-xs uppercase tracking-[0.16em] text-[#757575]">{label}</p>
-          <p className="mt-1.5 text-sm leading-6 text-[#171717]">{value}</p>
-        </div>
-      ))}
+      {rows.map(([label, value]) =>
+        label === 'Контакты ЮЛ и ЛПР' ? (
+          <ContactsReportField key={label} contactRole={company.contactRole} />
+        ) : (
+          <div key={label} className="rounded-xl border border-black/8 bg-[#fafafa] px-4 py-3">
+            <p className="text-xs uppercase tracking-[0.16em] text-[#757575]">{label}</p>
+            <p className="mt-1.5 text-sm leading-6 text-[#171717]">{value}</p>
+          </div>
+        ),
+      )}
     </div>
   )
 }
@@ -1469,34 +1956,21 @@ function CardSkeleton() {
   )
 }
 
-function getSearchMode(value: string | null): SearchMode {
-  if (value === 'name' || value === 'group') {
-    return value
+function filterCompanies(companies: CompanyBrief[], query: string) {
+  const trimmedQuery = query.trim()
+  if (!trimmedQuery) {
+    return companies
   }
 
-  return 'inn'
-}
+  const normalizedQuery = trimmedQuery.toLowerCase()
+  const digitsOnlyQuery = normalizedQuery.replace(/\D/g, '')
 
-function getSearchModeLabel(mode: SearchMode) {
-  switch (mode) {
-    case 'name':
-      return 'Наименование'
-    case 'group':
-      return 'Группа'
-    default:
-      return 'ИНН'
-  }
-}
-
-function getSearchPlaceholder(mode: SearchMode) {
-  switch (mode) {
-    case 'name':
-      return 'Введите наименование компании'
-    case 'group':
-      return 'Введите название группы'
-    default:
-      return 'Введите ИНН клиента или организации'
-  }
+  return companies.filter((company) => {
+    const matchesName = company.name.toLowerCase().includes(normalizedQuery)
+    const matchesGroup = company.groupName.toLowerCase().includes(normalizedQuery)
+    const matchesInn = digitsOnlyQuery.length > 0 && company.inn.includes(digitsOnlyQuery)
+    return matchesName || matchesGroup || matchesInn
+  })
 }
 
 function parseSystemFilters(value: string | null): SystemFilter[] {
@@ -1510,35 +1984,6 @@ function parseSystemFilters(value: string | null): SystemFilter[] {
     .filter((item): item is SystemFilter =>
       SYSTEM_FILTERS.includes(item as SystemFilter),
     )
-}
-
-function filterCompanies(companies: CompanyBrief[], query: string, mode: SearchMode) {
-  const trimmedQuery = query.trim()
-  if (!trimmedQuery) {
-    return companies
-  }
-
-  const normalizedQuery = trimmedQuery.toLowerCase()
-
-  switch (mode) {
-    case 'name':
-      return companies.filter((company) => company.name.toLowerCase().includes(normalizedQuery))
-    case 'group':
-      return companies.filter((company) =>
-        company.groupName.toLowerCase().includes(normalizedQuery),
-      )
-    default: {
-      const digitsOnlyQuery = normalizedQuery.replace(/\D/g, '')
-      if (!digitsOnlyQuery) {
-        return companies.filter(
-          (company) =>
-            company.name.toLowerCase().includes(normalizedQuery) ||
-            company.groupName.toLowerCase().includes(normalizedQuery),
-        )
-      }
-      return companies.filter((company) => company.inn.includes(digitsOnlyQuery))
-    }
-  }
 }
 
 export default App

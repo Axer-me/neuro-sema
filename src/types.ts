@@ -1,5 +1,3 @@
-export type SearchMode = 'inn' | 'name' | 'group'
-
 export const SYSTEM_FILTERS = [
   'SFA',
   'Pega',
